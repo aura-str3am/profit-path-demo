@@ -70,9 +70,9 @@ async def chat(chat: ChatMessage):
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": chat.message})
 
-        # CORRECT MODEL NAME: claude-3-haiku-20240313
+        # Using the generic model alias to avoid version-specific 404 errors
         response = client.messages.create(
-            model="claude-3-haiku-20240313",
+            model="claude-3-haiku",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=messages
