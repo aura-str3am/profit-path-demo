@@ -7,13 +7,12 @@ import os
 import logging
 from anthropic import Anthropic, AuthenticationError, APIConnectionError, APIStatusError
 
-# Set up logging to see errors in Render logs
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Initialize Anthropic Client
 def get_anthropic_client():
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -66,16 +65,14 @@ async def get_index():
 async def chat(chat: ChatMessage):
     try:
         client = get_anthropic_client()
-
         messages = []
         for msg in chat.history:
             messages.append({"role": msg["role"], "content": msg["content"]})
-
         messages.append({"role": "user", "content": chat.message})
 
-        # Updated to use the newest 3.5 Haiku model
+        # Using the most stable Haiku model name
         response = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-3-haiku-20240307",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=messages
@@ -83,19 +80,14 @@ async def chat(chat: ChatMessage):
         return {"response": response.content[0].text}
 
     except ValueError as e:
-        logger.error(f"Config Error: {str(e)}")
-        return {"response": f"Configuration Error: {str(e)}. Please check Render Environment variables."}
+        return {"response": f"Configuration Error: {str(e)}"}
     except AuthenticationError:
-        logger.error("Authentication Error: Invalid API Key")
-        return {"response": "Authentication Error: Your API Key is invalid. Please check your Render Environment variables."}
+        return {"response": "Authentication Error: Your API Key is invalid."}
     except APIConnectionError:
-        logger.error("Connection Error: Could not connect to Anthropic")
-        return {"response": "Connection Error: I'm having trouble reaching my brain. Please try again in a moment."}
+        return {"response": "Connection Error: I'm having trouble reaching my brain."}
     except APIStatusError as e:
-        logger.error(f"API Status Error: {e.status_code} - {e.message}")
-        return {"response": f"API Error: {e.message}. (This might be a billing or quota issue)."}
+        return {"response": f"API Error: {e.message}"}
     except Exception as e:
-        logger.exception("Unexpected error occurred")
         return {"response": f"An unexpected error occurred: {str(e)}"}
 
 if __name__ == "__main__":
