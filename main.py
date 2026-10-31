@@ -70,9 +70,9 @@ async def chat(chat: ChatMessage):
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": chat.message})
 
-        # Using the most stable Haiku model name
+        # CORRECT MODEL NAME: claude-3-haiku-20240313
         response = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-haiku-20240313",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=messages
