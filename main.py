@@ -4,15 +4,22 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 import os
-from anthropic import Anthropic
+import logging
+from anthropic import Anthropic, AuthenticationError, APIConnectionError, APIStatusError
 
-# Initialize FastAPI app
+# Set up logging to see errors in Render logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 # Initialize Anthropic Client
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+def get_anthropic_client():
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("API Key is missing from environment variables")
+    return Anthropic(api_key=api_key)
 
-# The system prompt we designed
 SYSTEM_PROMPT = """
 Role:
 You are the "Luxury Estate Assistant," a high-end digital concierge for an elite real estate firm. Your sole purpose is to qualify incoming leads and book high-value appointments for the lead agent. You are the "digital gatekeeper."
@@ -57,22 +64,39 @@ async def get_index():
 
 @app.post("/chat")
 async def chat(chat: ChatMessage):
-    messages = []
-    for msg in chat.history:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-
-    messages.append({"role": "user", "content": chat.message})
-
     try:
+        client = get_anthropic_client()
+
+        messages = []
+        for msg in chat.history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+        messages.append({"role": "user", "content": chat.message})
+
+        # Updated to use the newest 3.5 Haiku model
         response = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-5-haiku-20241022",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=messages
         )
         return {"response": response.content[0].text}
+
+    except ValueError as e:
+        logger.error(f"Config Error: {str(e)}")
+        return {"response": f"Configuration Error: {str(e)}. Please check Render Environment variables."}
+    except AuthenticationError:
+        logger.error("Authentication Error: Invalid API Key")
+        return {"response": "Authentication Error: Your API Key is invalid. Please check your Render Environment variables."}
+    except APIConnectionError:
+        logger.error("Connection Error: Could not connect to Anthropic")
+        return {"response": "Connection Error: I'm having trouble reaching my brain. Please try again in a moment."}
+    except APIStatusError as e:
+        logger.error(f"API Status Error: {e.status_code} - {e.message}")
+        return {"response": f"API Error: {e.message}. (This might be a billing or quota issue)."}
     except Exception as e:
-        return {"response": f"I apologize, I'm experiencing a momentary connection issue. Please try again. (Error: {str(e)})"}
+        logger.exception("Unexpected error occurred")
+        return {"response": f"An unexpected error occurred: {str(e)}"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
