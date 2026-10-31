@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxury Estate Concierge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-container { height: 70vh; }
+        .message-user { background-color: #1a1a1a; color: white; align-self: flex-end; border-radius: 15px 15px 0 15px; }
+        .message-bot { background-color: #f3f4f6; color: #1a1a1a; align-self: flex-start; border-radius: 15px 15px 15px 0; }
+    </style>
+</head>
+<body class="bg-stone-100 font-serif">
+
+    <div class="max-w-2xl mx-auto mt-10 p-4">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-stone-800">Elite Estates</h1>
+            <p class="text-stone-500 italic">Digital Concierge Service</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-stone-200">
+            <div id="chat-window" class="chat-container overflow-y-auto p-6 flex flex-col gap-4">
+                <div class="message-bot p-3 max-w-[80%] shadow-sm">
+                    Welcome to Elite Estates. I am the digital concierge for the firm. Are you looking for a specific property, or are you exploring the luxury market today?
+                </div>
+            </div>
+
+            <div class="p-4 bg-stone-50 border-t border-stone-200 flex gap-2">
+                <input type="text" id="user-input" placeholder="Your response..." class="flex-1 p-3 rounded-full border border-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-400">
+                <button onclick="sendMessage()" class="bg-stone-800 text-white px-6 py-3 rounded-full hover:bg-stone-700 transition-all font-medium">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let history = [
+            { role: "assistant", content: "Welcome to Elite Estates. I am the digital concierge for the firm. Are you looking for a specific property, or are you exploring the luxury market today?" }
+        ];
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const window = document.getElementById('chat-window');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            window.innerHTML += `<div class="message-user p-3 max-w-[80%] shadow-sm">${text}</div>`;
+            input.value = '';
+            window.scrollTop = window.scrollHeight;
+
+            history.push({ role: "user", content: text });
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, history: history })
+                });
+                const data = await response.json();
+
+                window.innerHTML += `<div class="message-bot p-3 max-w-[80%] shadow-sm">${data.response}</div>`;
+                history.push({ role: "assistant", content: data.response });
+                window.scrollTop = window.scrollHeight;
+            } catch (e) {
+                window.innerHTML += `<div class="message-bot p-3 max-w-[80%] shadow-sm text-red-500">Sorry, I'm having trouble connecting. Please try again.</div>`;
+            }
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
